@@ -1,6 +1,10 @@
 import itertools
 import networkx as nx
 import pandas as pd
+import igraph as ig
+import numpy as np
+from sklearn.model_selection import ParameterGrid
+
 
 def distance(x1, y1, x2, y2):
     return ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
@@ -125,6 +129,138 @@ def count_edge_crossings(graph, pos_df):
                 # print('crossed')
     return crossings**2  
 
+from sklearn.metrics import silhouette_score
+
+from scipy.spatial.distance import pdist, squareform
+
+
+def intra_cluster_distance(G, posdf):
+    """
+    Calculate the average intra-cluster distance for each cluster and overall.
+    
+    :param positions: Array-like, positions of the points (coordinates)
+    :param labels: List of cluster labels corresponding to each point
+    :return: Dictionary containing intra-cluster distances for each cluster and overall average
+    """
+
+    G_ig = ig.Graph.TupleList(nx.to_edgelist(G), directed=False)
+    missing_vertices = set(G.nodes()) - set(G_ig.vs['name'])
+    G_ig.add_vertices(list(missing_vertices))
+
+    resolutions = np.linspace(0.1, 1.5, 10)  # Adjust the range as needed
+    param_grid = {'resolution': resolutions}
+    grid = ParameterGrid(param_grid)
+
+    best_modularity = -np.inf
+    best_partition = None
+    for params in grid:
+        partition = G_ig.community_leiden(objective_function="modularity", **params)
+        modularity = G_ig.modularity(partition)
+        if modularity > best_modularity:
+            best_modularity = modularity
+            best_partition = partition
+
+    list_comms = [i for i, com in enumerate(best_partition) for node in com]
+
+    unique_labels = np.unique(list_comms)
+    intra_cluster_distances = {}
+    total_distance = 0
+
+    for label in unique_labels:
+        cluster_points = posdf[np.array(list_comms) == label]
+        if len(cluster_points) > 1:
+            # Calculate pairwise distances between all points in the cluster
+            pairwise_distances = pdist(cluster_points)
+            cluster_distance_sum = np.sum(pairwise_distances)
+            intra_cluster_distances[label] = cluster_distance_sum
+            total_distance += cluster_distance_sum
+        else:
+            # For clusters with a single point, distance is 0
+            intra_cluster_distances[label] = 0.0
+
+    intra_cluster_distances['overall_sum'] = total_distance
+    return intra_cluster_distances
+
+#using silhouette score
+def measure_communities_closeness(G, posdf):
+    G_ig = ig.Graph.TupleList(nx.to_edgelist(G), directed=False)
+    missing_vertices = set(G.nodes()) - set(G_ig.vs['name'])
+    G_ig.add_vertices(list(missing_vertices))
+
+    resolutions = np.linspace(0.1, 1.5, 10)  # Adjust the range as needed
+    param_grid = {'resolution': resolutions}
+    grid = ParameterGrid(param_grid)
+
+    best_modularity = -np.inf
+    best_partition = None
+    for params in grid:
+        partition = G_ig.community_leiden(objective_function="modularity", **params)
+        modularity = G_ig.modularity(partition)
+        if modularity > best_modularity:
+            best_modularity = modularity
+            best_partition = partition
+
+    list_comms = [i for i, com in enumerate(best_partition) for node in com]
+    sil_score = silhouette_score(posdf, list_comms)
+
+    return sil_score
+
+    #todo 
+    #potraktowac list_comms jako true labels
+    # ari_scores['Leiden'] = adjusted_rand_score(true_labels, list_comms)
+
+def calculate_angle(v1, v2):
+    """Calculate the angle between two vectors."""
+    dot_product = np.dot(v1, v2)
+    norm_v1 = np.linalg.norm(v1)
+    norm_v2 = np.linalg.norm(v2)
+    cos_theta = dot_product / (norm_v1 * norm_v2)
+    angle = np.arccos(np.clip(cos_theta, -1.0, 1.0))
+    return np.degrees(angle)
+
+
+def sum_of_angles(G, posdf):
+    total_angle = 0
+    edges = list(G.edges())
+    
+    for i in range(len(edges)):
+        for j in range(i + 1, len(edges)):
+            u1, v1 = edges[i]
+            u2, v2 = edges[j]
+            
+            p1 = posdf.loc[u1, ['X', 'Y']].values
+            p2 = posdf.loc[v1, ['X', 'Y']].values
+            p3 = posdf.loc[u2, ['X', 'Y']].values
+            p4 = posdf.loc[v2, ['X', 'Y']].values
+            vec1 = p2 - p1
+            vec2 = p4 - p3
+            
+            angle = calculate_angle(vec1, vec2)
+            angle = angle/360
+            total_angle += min(angle, .5 - angle)
+    return total_angle
+
+
+# To measure the symmetry of a graph visualization, 
+# you can use a metric based on the distribution of node positions. 
+# One approach is to calculate the variance of the distances of nodes 
+# from the center of the graph. A lower variance indicates higher symmetry.
+
+def measure_graph_symmetry(G, posdf):
+    # Calculate the center of the graph
+    center_x = posdf['X'].mean()
+    center_y = posdf['Y'].mean()
+    
+    # Calculate the distances of nodes from the center
+    distances = np.sqrt((posdf['X'] - center_x)**2 + (posdf['Y'] - center_y)**2)
+    
+    # Calculate the variance of the distances
+    variance = np.var(distances)
+    
+    # Invert the variance to get a symmetry score (lower variance means higher symmetry)
+    symmetry_score = 1 / (1 + variance)
+    
+    return symmetry_score
 
 
 def g_visualisation_metric(G, pos, lam1=.1, lam2=.001, lam3=.01, lam5=.1):

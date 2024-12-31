@@ -127,7 +127,9 @@ def count_edge_crossings(graph, pos_df):
                 # print(u1, v1)
                 # print(u2, v2)
                 # print('crossed')
-    return crossings**2  
+
+    #todo originaly the result was squared - think about it later
+    return crossings
 
 from sklearn.metrics import silhouette_score
 

@@ -4,13 +4,87 @@ import pandas as pd
 import igraph as ig
 import numpy as np
 from sklearn.model_selection import ParameterGrid
+import matplotlib.pyplot as plt
+import os
+import pickle
 
+
+#@   ============== DRAWIG FUNCTIONS ====================
+
+def draw_five_layouts(G, graph_id, node_size=300):
+    G_ig = ig.Graph.TupleList(nx.to_edgelist(G), directed=False)
+    missing_vertices = set(G.nodes()) - set(G_ig.vs['name'])
+    G_ig.add_vertices(list(missing_vertices))
+    layouts = [
+        # nx.circular_layout(G),
+        nx.kamada_kawai_layout(G),
+        nx.random_layout(G),
+        nx.random_layout(G),
+        nx.random_layout(G),
+        nx.random_layout(G),
+        nx.random_layout(G),
+        # G_ig.layout('davidson_harel'),
+        # G_ig.layout('graphopt'),
+        G_ig.layout('lgl')
+    ]
+    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5', 'lgl']
+    # Create a 2x7 subplot
+    fig, axes = plt.subplots(1, 7, figsize=(20, 3.5))
+
+    # Draw the graph using each layout
+    for ax, pos, layout_name in zip(axes.flatten(), layouts, layout_names):
+        # pos = layout(G)
+        nx.draw(G, pos, with_labels=True, edge_color='gray', node_size=node_size, font_size=10, ax=ax)
+        ax.set_title(layout_name)
+
+    file_path = f'layouts_img/{graph_id}_all_layouts_img.png'
+
+    if os.path.exists(file_path):
+        raise FileExistsError(f"The file {file_path} already exists.")
+    else:
+        fig.savefig(file_path)
+        
+    plt.show()
+    return layouts
+
+
+
+def save_posdfs(G, layouts, graph_id):
+    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5', 'lgl']
+
+    # Save each layout to a file
+    for layout, name in zip(layouts, layout_names):
+       
+        if name.startswith('random') or name == 'kamada_kawai':
+            posdf = pd.DataFrame.from_dict(layout, orient='index', columns=['X', 'Y'])
+        else:
+            posdf = pd.DataFrame(layout.coords, columns=['X', 'Y'])
+
+        file_path = f'pos_dfs/{graph_id}_{name}.csv'
+
+        if os.path.exists(file_path):
+            raise FileExistsError(f"The file {file_path} already exists.")
+        else:
+            posdf.to_csv(file_path, index=False)
+
+
+    file_path = f'graph_objects/graph_{graph_id}.pkl'
+    if os.path.exists(file_path):
+        raise FileExistsError(f"The file {file_path} already exists.")
+    else:
+        with open(file_path, 'wb') as f:
+            pickle.dump(G, f)
+
+
+
+
+#@    ============ COMPONENETS FUNCTIONS =================
 
 def distance(x1, y1, x2, y2):
     return ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
 
 # NODE DISTRIBUTION
-#todo
+#done
 # symetrycznosc grafu
 # zachowanie communities blisko siebie
 # kąt miedzy krawędziami
@@ -45,6 +119,7 @@ def distance_to_borderlines(posdf):
 
 
 # EDGE LENGTHS SUM
+#todo erase the squaring - unnecessary?
 
 def edge_length_sum(graph, posdf):
     total_length = 0
@@ -57,6 +132,7 @@ def edge_length_sum(graph, posdf):
 
 
 # NODE TO EDGE DISTANCE
+#todo erase the squaring - unnecessary?
 
 def point_to_segment_distance(x, y, x1, y1, x2, y2):
     dx, dy = x2 - x1, y2 - y1

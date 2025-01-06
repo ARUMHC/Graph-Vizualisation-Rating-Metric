@@ -11,7 +11,7 @@ import pickle
 
 #@   ============== DRAWIG FUNCTIONS ====================
 
-def draw_five_layouts(G, graph_id, node_size=300):
+def draw_five_layouts(G, graph_id, node_size=150):
     G_ig = ig.Graph.TupleList(nx.to_edgelist(G), directed=False)
     missing_vertices = set(G.nodes()) - set(G_ig.vs['name'])
     G_ig.add_vertices(list(missing_vertices))
@@ -27,6 +27,7 @@ def draw_five_layouts(G, graph_id, node_size=300):
         # G_ig.layout('graphopt'),
         G_ig.layout('lgl')
     ]
+
     layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5', 'lgl']
     # Create a 2x7 subplot
     fig, axes = plt.subplots(1, 7, figsize=(20, 3.5))
@@ -34,15 +35,21 @@ def draw_five_layouts(G, graph_id, node_size=300):
     # Draw the graph using each layout
     for ax, pos, layout_name in zip(axes.flatten(), layouts, layout_names):
         # pos = layout(G)
+        # rescaling to make all the rangesfrom -1 to 1
+        if layout_name == 'lgl':
+            pos = rescale_igraph_pos(pos)
+            print(pos)
+    
         nx.draw(G, pos, with_labels=True, edge_color='gray', node_size=node_size, font_size=10, ax=ax)
         ax.set_title(layout_name)
 
     file_path = f'layouts_img/{graph_id}_all_layouts_img.png'
 
-    if os.path.exists(file_path):
-        raise FileExistsError(f"The file {file_path} already exists.")
-    else:
-        fig.savefig(file_path)
+    # if os.path.exists(file_path):
+    #     raise FileExistsError(f"The file {file_path} already exists.")
+    # else:
+    #     fig.savefig(file_path)
+    fig.savefig(file_path)
         
     plt.show()
     return layouts
@@ -54,29 +61,53 @@ def save_posdfs(G, layouts, graph_id):
 
     # Save each layout to a file
     for layout, name in zip(layouts, layout_names):
-       
+        
+        # for networx
         if name.startswith('random') or name == 'kamada_kawai':
             posdf = pd.DataFrame.from_dict(layout, orient='index', columns=['X', 'Y'])
         else:
+        # for igraph
             posdf = pd.DataFrame(layout.coords, columns=['X', 'Y'])
+            posdf = rescale_dataframe_coords(posdf)
 
         file_path = f'pos_dfs/{graph_id}_{name}.csv'
 
-        if os.path.exists(file_path):
-            raise FileExistsError(f"The file {file_path} already exists.")
-        else:
-            posdf.to_csv(file_path, index=False)
+        # if os.path.exists(file_path):
+        #     raise FileExistsError(f"The file {file_path} already exists.")
+        # else:
+        #     posdf.to_csv(file_path, index=False)
+        posdf.to_csv(file_path, index=False)
 
 
     file_path = f'graph_objects/graph_{graph_id}.pkl'
-    if os.path.exists(file_path):
-        raise FileExistsError(f"The file {file_path} already exists.")
-    else:
-        with open(file_path, 'wb') as f:
-            pickle.dump(G, f)
+    # if os.path.exists(file_path):
+    #     raise FileExistsError(f"The file {file_path} already exists.")
+    # else:
+    #     with open(file_path, 'wb') as f:
+    #         pickle.dump(G, f)
+    with open(file_path, 'wb') as f:
+        pickle.dump(G, f)
 
 
+def rescale_igraph_pos(pos):
+    coords = np.array(pos.coords)
+    min_coords = coords.min(axis=0)
+    max_coords = coords.max(axis=0)
+    scaled_coords = 2 * (coords - min_coords) / (max_coords - min_coords) - 1
 
+    # Create a dictionary of rescaled positions for NetworkX
+    rescaled_pos = {i: scaled_coords[i] for i in range(len(scaled_coords))}
+    return rescaled_pos
+
+def rescale_dataframe_coords(df):
+    coords = df.values
+    min_coords = coords.min(axis=0)
+    max_coords = coords.max(axis=0)
+    scaled_coords = 2 * (coords - min_coords) / (max_coords - min_coords) - 1
+    
+    # Create a new DataFrame with the rescaled coordinates
+    rescaled_df = pd.DataFrame(scaled_coords, columns=df.columns, index=df.index)
+    return rescaled_df
 
 #@    ============ COMPONENETS FUNCTIONS =================
 
@@ -95,6 +126,14 @@ def node_distribution(posdf):
         dij = distance(row_i['X'], row_i['Y'], row_j['X'], row_j['Y'])
         if dij != 0:  # Avoid division by zero
             total_sum += 1 / dij**2
+    return total_sum
+
+def node_distribution_raw(posdf):
+    total_sum = 0
+    for (i, row_i), (j, row_j) in itertools.combinations(posdf.iterrows(), 2):
+        dij = distance(row_i['X'], row_i['Y'], row_j['X'], row_j['Y'])
+        if dij != 0:  # Avoid division by zero
+            total_sum += 1 / dij
     return total_sum
 
 # DISTANCE TO BORDERLINES
@@ -117,6 +156,25 @@ def distance_to_borderlines(posdf):
         total_sum += (1 / (ri ** 2) + 1 / (ti ** 2) + 1 / (li ** 2) + 1 / (bi ** 2))
     return round(total_sum, 3)
 
+def distance_to_borderlines_raw(posdf):
+    total_sum = 0
+    for index, row in posdf.iterrows():
+        x, y = row['X'], row['Y']
+        # Calculate distances to sides
+        ri = 1 - x  
+        li = 1 + x  
+        ti = 1 - y  
+        bi = 1 + y  
+        # to avoid diving by zero
+        ri += .01 if ri==0 else ri
+        ti += .01 if ti==0 else ti
+        li += .01 if li==0 else li
+        bi += .01 if bi==0 else bi
+
+        total_sum += (1 / (ri) + 1 / (ti) + 1 / (li) + 1 / (bi))
+    return round(total_sum, 3)
+
+
 
 # EDGE LENGTHS SUM
 #todo erase the squaring - unnecessary?
@@ -130,6 +188,14 @@ def edge_length_sum(graph, posdf):
         total_length += edge_length**2
     return total_length
 
+def edge_length_sum_raw(graph, posdf):
+    total_length = 0
+    for u, v in graph.edges():
+        x1, y1 = posdf.loc[u, ['X', 'Y']]
+        x2, y2 = posdf.loc[v, ['X', 'Y']]
+        edge_length = distance(x1, y1, x2, y2)
+        total_length += edge_length
+    return total_length
 
 # NODE TO EDGE DISTANCE
 #todo erase the squaring - unnecessary?
@@ -162,6 +228,28 @@ def edge_node_distance_contribution(G, pos_df, ):
     lam4 = 1/g_min**2
     return (total_contribution, lam4)
 
+
+def edge_node_distance_contribution_raw(G, pos_df, ):
+    total_contribution = 0
+    g_min = 5 #cannot be more, the plane is restricted to -1 to 1
+    for node in G.nodes():
+        x_node, y_node = pos_df.loc[node, 'X'], pos_df.loc[node, 'Y']
+        for u, v in G.edges():
+            #if node in the edge - skip 
+            if node == u or node == v:
+                continue
+            else:
+                x1, y1 = pos_df.loc[u, 'X'], pos_df.loc[u, 'Y']
+                x2, y2 = pos_df.loc[v, 'X'], pos_df.loc[v, 'Y']
+                distance = point_to_segment_distance(x_node, y_node, x1, y1, x2, y2)
+                if distance < g_min:
+                    g_min = distance
+                contribution = 1 / (distance ) if distance != 0 else 0  # Avoid division by zero
+                total_contribution += contribution
+    # lam4 = lam5/g_min**2
+    lam4 = 1/g_min**2
+    return (total_contribution, lam4)
+
 #EDGE INTERSECTIONS
 
 def intersect(line1, line2):
@@ -189,6 +277,26 @@ def intersect(line1, line2):
     return False
 
 def count_edge_crossings(graph, pos_df):
+    crossings = 0
+    # lam4 = lam5/g_min**2
+
+    for (u1, v1), (u2, v2) in itertools.combinations(graph.edges(), 2):
+        if len(set([u1, v1, u2, v2])) != 4:
+            continue
+        else:
+            line1 = (pos_df.loc[u1, 'X'], pos_df.loc[u1, 'Y'], pos_df.loc[v1, 'X'], pos_df.loc[v1, 'Y'])
+            line2 = (pos_df.loc[u2, 'X'], pos_df.loc[u2, 'Y'], pos_df.loc[v2, 'X'], pos_df.loc[v2, 'Y'])
+            if intersect(line1, line2):
+                crossings += 1
+                # print(u1, v1)
+                # print(u2, v2)
+                # print('crossed')
+
+    #todo originaly the result was squared - think about it later
+    return crossings**2
+
+
+def count_edge_crossings_raw(graph, pos_df):
     crossings = 0
     # lam4 = lam5/g_min**2
 

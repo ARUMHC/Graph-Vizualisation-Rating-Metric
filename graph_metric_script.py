@@ -25,13 +25,13 @@ def draw_five_layouts(G, graph_id, node_size=150):
         nx.random_layout(G),
         # G_ig.layout('davidson_harel'),
         # G_ig.layout('graphopt'),
-        G_ig.layout('lgl')
+        # G_ig.layout('lgl')
     ]
 
-    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5', 'lgl']
+    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5']
     # Create a 2x7 subplot
-    fig, axes = plt.subplots(1, 7, figsize=(20, 3.5))
-
+    fig, axes = plt.subplots(1, 6, figsize=(22, 3.5))
+ 
     # Draw the graph using each layout
     for ax, pos, layout_name in zip(axes.flatten(), layouts, layout_names):
         # pos = layout(G)
@@ -57,7 +57,7 @@ def draw_five_layouts(G, graph_id, node_size=150):
 
 
 def save_posdfs(G, layouts, graph_id):
-    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5', 'lgl']
+    layout_names = ['kamada_kawai','random_no1', 'random_no2', 'random_no3', 'random_no4', 'random_no5']
 
     # Save each layout to a file
     for layout, name in zip(layouts, layout_names):
@@ -89,8 +89,10 @@ def save_posdfs(G, layouts, graph_id):
         pickle.dump(G, f)
 
 
+
+
 def rescale_igraph_pos(pos):
-    coords = np.array(pos.coords)
+    coords = np.array(list(pos.values()))
     min_coords = coords.min(axis=0)
     max_coords = coords.max(axis=0)
     scaled_coords = 2 * (coords - min_coords) / (max_coords - min_coords) - 1
@@ -98,6 +100,7 @@ def rescale_igraph_pos(pos):
     # Create a dictionary of rescaled positions for NetworkX
     rescaled_pos = {i: scaled_coords[i] for i in range(len(scaled_coords))}
     return rescaled_pos
+
 
 def rescale_dataframe_coords(df):
     coords = df.values

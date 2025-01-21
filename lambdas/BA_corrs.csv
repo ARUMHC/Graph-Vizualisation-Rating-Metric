@@ -1,0 +1,2 @@
+score,node_distribution,node_distribution_raw,distance_to_borderlines,distance_to_borderlines_raw,edge_length_sum,edge_length_sum_raw,edge_node_distance_contribution,edge_node_distance_contribution_raw,count_edge_crossings,count_edge_crossings_raw,communities_closeness,sum_of_angles,symmetry,category
+1.0,-0.43890815250199966,-0.29548684305002243,0.49313580649884314,0.5139305271872345,0.18871363125086998,0.15256895493920017,-0.05629959624872086,-0.230325260466596,-0.06589285687112512,-0.13818842691583433,0.29574076409109823,0.05435838324655624,-0.5143010530824134,BA

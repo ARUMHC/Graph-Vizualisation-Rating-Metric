@@ -90,6 +90,7 @@ def save_posdfs(G, layouts, graph_id):
 
 
 
+#for layouts from igragh
 
 def rescale_igraph_pos(pos):
     coords = np.array(list(pos.values()))

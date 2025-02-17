@@ -324,6 +324,7 @@ from sklearn.metrics import silhouette_score
 from scipy.spatial.distance import pdist, squareform
 
 
+# I think this didnt work because sometimes there is just one cluster?
 def intra_cluster_distance(G, posdf):
     """
     Calculate the average intra-cluster distance for each cluster and overall.
@@ -396,6 +397,7 @@ def measure_communities_closeness(G, posdf):
     return sil_score
 
     #todo 
+    #todo zapytac o to
     #potraktowac list_comms jako true labels
     # ari_scores['Leiden'] = adjusted_rand_score(true_labels, list_comms)
 
@@ -453,6 +455,7 @@ def measure_graph_symmetry(G, posdf):
     return symmetry_score
 
 
+#todo delete this, its rather unneccessary
 def g_visualisation_metric(G, pos, lam1=.1, lam2=.001, lam3=.01, lam5=.1):
     posdf = pd.DataFrame.from_dict(pos, orient='index', columns=['X', 'Y'])
     pen1 = lam1 * node_distribution(posdf, lam1)

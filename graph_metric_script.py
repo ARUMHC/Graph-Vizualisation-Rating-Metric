@@ -124,6 +124,15 @@ def distance(x1, y1, x2, y2):
 # zachowanie communities blisko siebie
 # kąt miedzy krawędziami
 
+def node_distribution_unreversed(posdf):
+    total_sum = 0
+    for (i, row_i), (j, row_j) in itertools.combinations(posdf.iterrows(), 2):
+        dij = distance(row_i['X'], row_i['Y'], row_j['X'], row_j['Y'])
+        # if dij != 0:  # Avoid division by zero
+            # total_sum += 1 / dij**2
+        total_sum += dij
+    return total_sum
+
 def node_distribution(posdf):
     total_sum = 0
     for (i, row_i), (j, row_j) in itertools.combinations(posdf.iterrows(), 2):
@@ -142,7 +151,8 @@ def node_distribution_raw(posdf):
 
 # DISTANCE TO BORDERLINES
 
-def distance_to_borderlines(posdf):
+
+def distance_to_borderlines_unreversed(posdf):
     total_sum = 0
     for index, row in posdf.iterrows():
         x, y = row['X'], row['Y']
@@ -151,6 +161,26 @@ def distance_to_borderlines(posdf):
         li = 1 + x  
         ti = 1 - y  
         bi = 1 + y  
+        # to avoid diving by zero
+        # ri += .01 if ri==0 else ri
+        # ti += .01 if ti==0 else ti
+        # li += .01 if li==0 else li
+        # bi += .01 if bi==0 else bi
+
+        # total_sum += (1 / (ri ** 2) + 1 / (ti ** 2) + 1 / (li ** 2) + 1 / (bi ** 2))
+        total_sum += abs(ri) + abs(ti) + abs(li) + abs(bi)
+
+    return round(total_sum, 3)
+
+def distance_to_borderlines(posdf):
+    total_sum = 0
+    for index, row in posdf.iterrows():
+        x, y = row['X'], row['Y']
+        # Calculate distances to sides
+        ri = 1.1 - x  
+        li = 1.1 + x  
+        ti = 1.1 - y  
+        bi = 1.1 + y  
         # to avoid diving by zero
         ri += .01 if ri==0 else ri
         ti += .01 if ti==0 else ti
@@ -165,10 +195,10 @@ def distance_to_borderlines_raw(posdf):
     for index, row in posdf.iterrows():
         x, y = row['X'], row['Y']
         # Calculate distances to sides
-        ri = 1 - x  
-        li = 1 + x  
-        ti = 1 - y  
-        bi = 1 + y  
+        ri = 1.1 - x  
+        li = 1.1 + x  
+        ti = 1.1 - y  
+        bi = 1.1 + y  
         # to avoid diving by zero
         ri += .01 if ri==0 else ri
         ti += .01 if ti==0 else ti
@@ -211,7 +241,32 @@ def point_to_segment_distance(x, y, x1, y1, x2, y2):
     proj_x, proj_y = x1 + t * dx, y1 + t * dy
     return ((x - proj_x) ** 2 + (y - proj_y) ** 2) ** 0.5
 
-def edge_node_distance_contribution(G, pos_df, ):
+
+
+def edge_node_distance_contribution_unreversed(G, pos_df ):
+    total_contribution = 0
+    g_min = 5 #cannot be more, the plane is restricted to -1 to 1
+    for node in G.nodes():
+        x_node, y_node = pos_df.loc[node, 'X'], pos_df.loc[node, 'Y']
+        for u, v in G.edges():
+            #if node in the edge - skip 
+            if node == u or node == v:
+                continue
+            else:
+                x1, y1 = pos_df.loc[u, 'X'], pos_df.loc[u, 'Y']
+                x2, y2 = pos_df.loc[v, 'X'], pos_df.loc[v, 'Y']
+                distance = point_to_segment_distance(x_node, y_node, x1, y1, x2, y2)
+                if distance < g_min:
+                    g_min = distance
+                # contribution = 1 / (distance ** 2) if distance != 0 else 0  # Avoid division by zero
+                # total_contribution += contribution\
+                total_contribution += distance
+    # lam4 = lam5/g_min**2
+    lam4 = 1/g_min**2
+    return (total_contribution, lam4)
+
+
+def edge_node_distance_contribution(G, pos_df):
     total_contribution = 0
     g_min = 5 #cannot be more, the plane is restricted to -1 to 1
     for node in G.nodes():
@@ -233,7 +288,7 @@ def edge_node_distance_contribution(G, pos_df, ):
     return (total_contribution, lam4)
 
 
-def edge_node_distance_contribution_raw(G, pos_df, ):
+def edge_node_distance_contribution_raw(G, pos_df):
     total_contribution = 0
     g_min = 5 #cannot be more, the plane is restricted to -1 to 1
     for node in G.nodes():

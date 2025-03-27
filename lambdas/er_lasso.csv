@@ -1,2 +1,2 @@
-node_distribution_unreversed,distance_to_borderlines_unreversed,edge_length_sum,edge_node_distance_contribution_unreversed,count_edge_crossings_raw,communities_closeness,sum_of_angles,symmetry,category
-0.0,-0.04884941004567351,0.2789503506229186,0.23272050485895668,-0.22629331420209683,0.13072194251486288,-0.0,-0.3774840617617022,ER
+node_distribution_unreversed,distance_to_borderlines,edge_length_sum,edge_node_distance_contribution_unreversed,count_edge_crossings_raw,communities_closeness,sum_of_angles,symmetry,category
+0.0,-0.0,0.31356007399586294,0.21083371182888383,-0.2755678518541529,0.13106332807753332,-0.0,-0.3873375742778309,ER
